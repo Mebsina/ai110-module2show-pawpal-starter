@@ -115,6 +115,15 @@ st.divider()
 # --- Generate Plan ---
 st.subheader("Generate Plan")
 
+col1, col2 = st.columns(2)
+with col1:
+    pet_filter_options = ["All Pets"] + [p.name for p in owner.pets]
+    selected_pet_filter = st.selectbox("Filter by pet", pet_filter_options)
+with col2:
+    status_filter_options = {"Incomplete only": False, "Complete only": True, "All tasks": None}
+    selected_status_label = st.selectbox("Filter by status", list(status_filter_options.keys()))
+    selected_status_filter = status_filter_options[selected_status_label]
+
 if st.button("Current Plan"):
     if not owner.pets:
         st.warning("Add at least one pet first.")
@@ -124,23 +133,29 @@ if st.button("Current Plan"):
         st.warning("Enter an owner name first.")
     else:
         scheduler = Scheduler(owner=owner)
-        schedule = scheduler.generate_plan()
+        pet_name_filter = None if selected_pet_filter == "All Pets" else selected_pet_filter
+        filtered = scheduler.filter_tasks(pet_name=pet_name_filter, status=selected_status_filter)
 
-        st.success(f"Scheduled {len(schedule.tasks)} task(s), {schedule.total_duration} minutes total.")
+        if not filtered:
+            st.warning("No tasks match the selected filters.")
+        else:
+            schedule = scheduler.generate_plan(tasks=filtered)
 
-        if schedule.tasks:
-            st.markdown("**Scheduled tasks:**")
-            st.table([
-                {"title": t.title, "duration_minutes": t.duration_minutes, "priority": t.priority}
-                for t in schedule.tasks
-            ])
+            st.success(f"Scheduled {len(schedule.tasks)} task(s), {schedule.total_duration} minutes total.")
 
-        if schedule.unscheduled:
-            st.markdown("**Could not fit:**")
-            st.table([
-                {"title": t.title, "duration_minutes": t.duration_minutes, "priority": t.priority}
-                for t in schedule.unscheduled
-            ])
+            if schedule.tasks:
+                st.markdown("**Scheduled tasks:**")
+                st.table([
+                    {"title": t.title, "duration_minutes": t.duration_minutes, "priority": t.priority}
+                    for t in schedule.tasks
+                ])
 
-        st.markdown("**Explanation:**")
-        st.text(scheduler.explain_plan(schedule))
+            if schedule.unscheduled:
+                st.markdown("**Could not fit:**")
+                st.table([
+                    {"title": t.title, "duration_minutes": t.duration_minutes, "priority": t.priority}
+                    for t in schedule.unscheduled
+                ])
+
+            st.markdown("**Explanation:**")
+            st.text(scheduler.explain_plan(schedule))

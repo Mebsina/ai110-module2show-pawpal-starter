@@ -149,8 +149,14 @@ class Scheduler:
 
     owner: Owner
 
-    def generate_plan(self) -> Schedule:
+    def generate_plan(self, tasks: list[Task] | None = None) -> Schedule:
         """Retrieve all tasks from owner's pets and build a schedule.
+
+        Parameters
+        ----------
+        tasks:
+            Optional pre-filtered list of tasks to schedule. If None,
+            all tasks from all pets are used (default behaviour).
 
         Returns
         -------
@@ -158,7 +164,7 @@ class Scheduler:
             A Schedule whose .tasks list contains every task that fit,
             and whose .unscheduled list contains every task that did not.
         """
-        all_tasks = [task for pet in self.owner.pets for task in pet.tasks]
+        all_tasks = tasks if tasks is not None else [task for pet in self.owner.pets for task in pet.tasks]
 
         sorted_tasks = sorted(
             all_tasks,
@@ -177,6 +183,36 @@ class Scheduler:
                 schedule.unscheduled.append(task)
 
         return schedule
+
+    def filter_tasks(
+        self,
+        pet_name: str | None = None,
+        status: bool | None = None,
+    ) -> list[Task]:
+        """Return tasks filtered by pet name and/or completion status.
+
+        Parameters
+        ----------
+        pet_name:
+            If provided, only include tasks belonging to this pet.
+            Pass None to include all pets.
+        status:
+            If provided, only include tasks whose completion_status
+            matches this value (False = incomplete, True = complete).
+            Pass None to include both.
+
+        Returns
+        -------
+        list[Task]
+            Flat list of Task objects matching all supplied filters.
+        """
+        return [
+            task
+            for pet in self.owner.pets
+            for task in pet.tasks
+            if (pet_name is None or pet.name == pet_name)
+            and (status is None or task.completion_status == status)
+        ]
 
     def sort_by_time(self, tasks: list[Task]) -> list[Task]:
         """Return tasks sorted chronologically by scheduled_time.
