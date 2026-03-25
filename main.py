@@ -63,10 +63,28 @@ for t in mochi_tasks:
     done = "[done]" if t.completion_status else "[    ]"
     print(f"  {done}  {t.title}")
 
-# ----- TEST 4: generate plan from incomplete tasks only -----
+# ----- TEST 4: detect_time_conflicts -----
 print()
 print("=" * 40)
-print("  TEST 4: generate_plan(incomplete tasks)")
+print("  TEST 4: detect_time_conflicts()")
+print("=" * 40)
+
+# Add a deliberate clash: two tasks at 09:00
+mochi.tasks.append(
+    Task(title="Meds", duration_minutes=5, priority="high", category="meds", frequency="daily", scheduled_time="09:00")
+)
+
+conflicts = scheduler.detect_time_conflicts()
+if conflicts:
+    for warning in conflicts:
+        print(f"  ⚠  {warning}")
+else:
+    print("  No conflicts found.")
+
+# ----- TEST 5: generate plan from incomplete tasks only -----
+print()
+print("=" * 40)
+print("  TEST 5: generate_plan(incomplete tasks)")
 print("=" * 40)
 schedule = scheduler.generate_plan(tasks=incomplete)
 print(scheduler.explain_plan(schedule))

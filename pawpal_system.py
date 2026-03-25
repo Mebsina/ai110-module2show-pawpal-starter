@@ -186,6 +186,54 @@ class Scheduler:
 
         return schedule
 
+    def detect_time_conflicts(self, tasks: list[Task] | None = None) -> list[str]:
+        """Check for tasks that share the same scheduled_time slot.
+
+        Compares every task across all pets (or a supplied list) and
+        returns a plain-text warning for each time slot where two or
+        more tasks overlap. Never raises — always returns a list that
+        is empty when there are no conflicts.
+
+        Parameters
+        ----------
+        tasks:
+            Optional pre-filtered task list to check. If None, all
+            tasks from all pets are used.
+
+        Returns
+        -------
+        list[str]
+            One warning string per conflicting time slot, e.g.:
+            ["CONFLICT at 09:00 — Litter box (Luna), Feeding (Mochi)"]
+            Empty list means no conflicts were found.
+        """
+        from collections import defaultdict
+
+        # Build a dict: time_slot -> [(pet_name, task_title), ...]
+        slots: dict[str, list[str]] = defaultdict(list)
+
+        if tasks is not None:
+            # Map task object -> pet name for the supplied list
+            task_to_pet: dict[int, str] = {}
+            for pet in self.owner.pets:
+                for t in pet.tasks:
+                    task_to_pet[id(t)] = pet.name
+            for t in tasks:
+                pet_name = task_to_pet.get(id(t), "Unknown")
+                slots[t.scheduled_time].append(f"{t.title} ({pet_name})")
+        else:
+            for pet in self.owner.pets:
+                for t in pet.tasks:
+                    slots[t.scheduled_time].append(f"{t.title} ({pet.name})")
+
+        warnings = []
+        for time_slot, entries in sorted(slots.items()):
+            if len(entries) > 1:
+                warnings.append(
+                    f"CONFLICT at {time_slot} — {', '.join(entries)}"
+                )
+        return warnings
+
     def reschedule_if_recurring(self, task: Task, pet: Pet) -> Task | None:
         """Mark a task complete and create the next occurrence if it recurs.
 
