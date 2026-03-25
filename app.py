@@ -85,14 +85,23 @@ else:
         scheduled_time = st.time_input("Scheduled Time", value=dtime(0, 0), step=900).strftime("%H:%M")
 
     if st.button("Scheduling a Task"):
-        active_pet.add_task(Task(
+        new_task = Task(
             title=task_title,
             duration_minutes=int(duration),
             priority=priority,
             category=category,
             frequency=frequency,
             scheduled_time=scheduled_time,
-        ))
+        )
+        # Check for a time conflict before committing the task
+        all_existing = [t for pet in owner.pets for t in pet.tasks]
+        conflicts = Scheduler(owner=owner).detect_time_conflicts(tasks=all_existing + [new_task])
+        if conflicts:
+            for warning in conflicts:
+                st.warning(f"⚠ {warning} — adjust the time or resolve the conflict first.")
+        else:
+            active_pet.add_task(new_task)
+            st.success(f"'{task_title}' added at {scheduled_time}.")
 
     if active_pet.tasks:
         st.write(f"Tasks for {active_pet.name}:")
