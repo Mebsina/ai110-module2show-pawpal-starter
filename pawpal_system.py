@@ -1,6 +1,5 @@
-"""Phase 2: Core Implementation
-
-Full implementation of Scheduler.generate_plan() and explain_plan().
+"""
+Full implementation of backend logics for the PawPal pet care scheduling system.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ class Task:
     Attributes
     ----------
     title:
-        Human-readable name for the task.
+        Name for the task.
     duration_minutes:
         How long the task takes to complete.
     priority:
@@ -83,6 +82,10 @@ class Pet:
     special_needs: list[str] = field(default_factory=list)
     tasks: list[Task] = field(default_factory=list)
 
+    def add_task(self, task: Task) -> None:
+        """Add a care task to this pet."""
+        self.tasks.append(task)
+
 
 @dataclass
 class Owner:
@@ -104,6 +107,10 @@ class Owner:
     available_minutes: int
     preferences: dict = field(default_factory=dict)
     pets: list[Pet] = field(default_factory=list)
+
+    def add_pet(self, pet: Pet) -> None:
+        """Add a pet to this owner's list."""
+        self.pets.append(pet)
 
 
 @dataclass
