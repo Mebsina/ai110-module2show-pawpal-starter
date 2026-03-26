@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import time as dtime
-from pawpal_system import Owner, Pet, Task, Scheduler
+from pawpal_system import Pet, Task, Scheduler, save_data, load_data
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -10,7 +10,7 @@ st.title("🐾 PawPal+")
 # Streamlit reruns the entire script on every interaction.
 # Only create these objects once. After that, read from session_state.
 if "owner" not in st.session_state:
-    st.session_state.owner = Owner(name="", available_minutes=60, pets=[])
+    st.session_state.owner = load_data()
 
 if "owner_editing" not in st.session_state:
     st.session_state.owner_editing = False
@@ -43,6 +43,7 @@ with col3:
     elif owner.name:
         if st.button("Save"):
             st.session_state.owner_editing = False
+            save_data(owner)
             st.rerun()
 
 st.divider()
@@ -65,6 +66,7 @@ if st.button("Adding a Pet"):
         new_pet = Pet(name=new_pet_name.strip(), species=new_pet_species, age=new_pet_age, special_needs=special_needs)
         owner.add_pet(new_pet)
         st.session_state.active_pet_index = len(owner.pets) - 1
+        save_data(owner)
         st.success(f"{new_pet_name} added!")
     else:
         st.warning("Enter a pet name first.")
@@ -122,6 +124,7 @@ else:
                 st.warning(f"⚠ {warning}. Please adjust the time or resolve the conflict first.")
         else:
             active_pet.add_task(new_task)
+            save_data(owner)
             st.success(f"'{task_title}' added at {scheduled_time}.")
 
     # All tasks across every pet, with a reference to which pet owns each one
@@ -181,12 +184,14 @@ else:
                         next_task = st.session_state.next_occurrences.pop(id(t), None)
                         if next_task is not None:
                             pet.tasks.remove(next_task)
+                        save_data(owner)
                         st.rerun()
                 else:
                     if row[8].button("Yes", type="secondary", key=f"complete_{id(t)}", use_container_width=True):
                         next_task = Scheduler(owner=owner).reschedule_if_recurring(task=t, pet=pet)
                         if next_task is not None:
                             st.session_state.next_occurrences[id(t)] = next_task
+                        save_data(owner)
                         st.rerun()
         else:
             st.info("No tasks match the selected filter.")

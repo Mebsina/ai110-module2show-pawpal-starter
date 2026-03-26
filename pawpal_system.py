@@ -4,8 +4,12 @@ Full implementation of backend logics for the PawPal pet care scheduling system.
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+
+DATA_FILE = "data/pawpal_data.json"
 
 # ---------------------------------------------------------------------------
 # Module-level constants
@@ -327,3 +331,66 @@ class Scheduler:
         """
         return sorted(tasks, key=lambda t: t.scheduled_time)
 
+
+# ---------------------------------------------------------------------------
+# Challenge 2: Data Persistence with Agent Mode
+# ---------------------------------------------------------------------------
+
+def save_data(owner: Owner) -> None:
+    """Serialize owner, pets, and tasks to DATA_FILE as JSON."""
+    os.makedirs("data", exist_ok=True)
+    data = {
+        "name": owner.name,
+        "available_minutes": owner.available_minutes,
+        "preferences": owner.preferences,
+        "pets": [
+            {
+                "name": pet.name,
+                "species": pet.species,
+                "age": pet.age,
+                "special_needs": pet.special_needs,
+                "tasks": [
+                    {
+                        "title": t.title,
+                        "duration_minutes": t.duration_minutes,
+                        "priority": t.priority,
+                        "category": t.category,
+                        "frequency": t.frequency,
+                        "completion_status": t.completion_status,
+                        "notes": t.notes,
+                        "scheduled_time": t.scheduled_time,
+                        "due_date": t.due_date,
+                    }
+                    for t in pet.tasks
+                ],
+            }
+            for pet in owner.pets
+        ],
+    }
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def load_data() -> Owner:
+    """Load owner, pets, and tasks from DATA_FILE. Returns empty Owner if file missing."""
+    if not os.path.exists(DATA_FILE):
+        return Owner(name="", available_minutes=60, pets=[])
+    with open(DATA_FILE) as f:
+        data = json.load(f)
+    pets = []
+    for p in data.get("pets", []):
+        tasks = [Task(**t) for t in p.get("tasks", [])]
+        pet = Pet(
+            name=p["name"],
+            species=p["species"],
+            age=p["age"],
+            special_needs=p.get("special_needs", []),
+            tasks=tasks,
+        )
+        pets.append(pet)
+    return Owner(
+        name=data.get("name", ""),
+        available_minutes=data.get("available_minutes", 60),
+        preferences=data.get("preferences", {}),
+        pets=pets,
+    )
