@@ -175,6 +175,8 @@ else:
                 else:
                     if row[7].button("Complete", type="secondary", key=f"complete_{id(t)}", use_container_width=True):
                         t.mark_complete()
+                        # TODO: Add dated logic here to automatically reschedule recurring tasks for the next day or week if needed.
+                        # Scheduler(owner=owner).reschedule_if_recurring(task=t, pet=pet)
                         st.rerun()
         else:
             st.info("No tasks match the selected filter.")
