@@ -327,37 +327,3 @@ class Scheduler:
         """
         return sorted(tasks, key=lambda t: t.scheduled_time)
 
-    def explain_plan(self, schedule: Schedule) -> str:
-        """Return an explanation of the generated plan.
-
-        Parameters
-        ----------
-        schedule:
-            A Schedule previously returned by generate_plan().
-
-        Returns
-        -------
-        str
-            Explanation of why each task was scheduled or skipped.
-        """
-        lines = [
-            f"Daily Plan for {self.owner.name}",
-            f"Available time: {self.owner.available_minutes} min\n",
-        ]
-
-        if schedule.tasks:
-            lines.append("Schedule:")
-            for i, task in enumerate(schedule.tasks, start=1):
-                lines.append(
-                    f"  {i}. {task.priority.capitalize()}: {task.title} for {task.duration_minutes} min"
-                )
-
-        if schedule.unscheduled:
-            lines.append("\nNot Scheduled:")
-            for task in schedule.unscheduled:
-                lines.append(
-                    f"  - {task.title} ({task.duration_minutes} min)"
-                )
-
-        lines.append(f"\nTotal scheduled time: {schedule.total_duration} min")
-        return "\n".join(lines)
