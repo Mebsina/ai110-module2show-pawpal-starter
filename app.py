@@ -57,9 +57,12 @@ with col2:
 with col3:
     new_pet_age = st.number_input("Age", min_value=0, max_value=30, value=1)
 
+new_pet_special_needs_raw = st.text_input("Special needs (comma-separated, optional)", placeholder="e.g. diabetic, senior")
+
 if st.button("Adding a Pet"):
     if new_pet_name.strip():
-        new_pet = Pet(name=new_pet_name.strip(), species=new_pet_species, age=new_pet_age)
+        special_needs = [s.strip() for s in new_pet_special_needs_raw.split(",") if s.strip()]
+        new_pet = Pet(name=new_pet_name.strip(), species=new_pet_species, age=new_pet_age, special_needs=special_needs)
         owner.add_pet(new_pet)
         st.session_state.active_pet_index = len(owner.pets) - 1
         st.success(f"{new_pet_name} added!")
@@ -187,6 +190,11 @@ else:
                         st.rerun()
         else:
             st.info("No tasks match the selected filter.")
+
+        st.markdown("**Pet Special Needs**")
+        for pet in owner.pets:
+            needs = ", ".join(pet.special_needs) if pet.special_needs else "none"
+            st.caption(f"{pet.name}: {needs}")
     else:
         st.info("No tasks yet. Add one above.")
 
