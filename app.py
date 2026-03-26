@@ -113,25 +113,71 @@ else:
         conflicts = Scheduler(owner=owner).detect_time_conflicts(tasks=all_existing + [new_task])
         if conflicts:
             for warning in conflicts:
-                st.warning(f"⚠ {warning} — adjust the time or resolve the conflict first.")
+                st.warning(f"⚠ {warning}. Please adjust the time or resolve the conflict first.")
         else:
             active_pet.add_task(new_task)
             st.success(f"'{task_title}' added at {scheduled_time}.")
 
-    if active_pet.tasks:
-        st.write(f"Tasks for {active_pet.name}:")
-        st.table([
-            {
-                "Pet": active_pet.name,
-                "Task Title": t.title,
-                "Time": t.scheduled_time,
-                "Duration (min)": t.duration_minutes,
-                "Priority": t.priority,
-                "Category": t.category,
-                "Frequency": t.frequency,
-            }
-            for t in active_pet.tasks
-        ])
+    # All tasks across every pet, with a reference to which pet owns each one
+    all_tasks_with_pet = [(pet, t) for pet in owner.pets for t in pet.tasks]
+
+    if all_tasks_with_pet:
+        st.markdown(f"**All Tasks** ({len(all_tasks_with_pet)} total)")
+
+        col_sort, col_filter = st.columns(2)
+        with col_sort:
+            sort_by = st.selectbox(
+                "Sort by",
+                ["Time", "Priority (high first)", "Duration (shortest first)"],
+                key="task_sort",
+            )
+        with col_filter:
+            all_priorities = ["All"] + sorted({t.priority for _, t in all_tasks_with_pet})
+            filter_priority = st.selectbox("Filter by priority", all_priorities, key="task_filter")
+
+        displayed = [
+            (pet, t) for pet, t in all_tasks_with_pet
+            if filter_priority == "All" or t.priority == filter_priority
+        ]
+
+        if sort_by == "Time":
+            displayed = sorted(displayed, key=lambda pt: pt[1].scheduled_time)
+        elif sort_by == "Priority (high first)":
+            from pawpal_system import PRIORITY_ORDER
+            displayed = sorted(displayed, key=lambda pt: -PRIORITY_ORDER[pt[1].priority])
+        else:
+            displayed = sorted(displayed, key=lambda pt: pt[1].duration_minutes)
+
+        high_count = sum(1 for _, t in displayed if t.priority == "high")
+        if high_count:
+            st.warning(f"{high_count} high-priority task(s) in view.")
+        else:
+            st.success(f"Showing {len(displayed)} task(s). No high-priority items outstanding.")
+
+        if displayed:
+            header = st.columns([1, 1, 1, 1, 1, 1, 1, 1.5])
+            for col, label in zip(header, ["Task", "Pet", "Time", "Duration", "Priority", "Category", "Freq", ""]):
+                col.markdown(f"**{label}**")
+            st.divider()
+            for pet, t in displayed:
+                row = st.columns([1, 1, 1, 1, 1, 1, 1, 1.5])
+                row[0].write(("~~" + t.title + "~~") if t.completion_status else t.title)
+                row[1].write(pet.name)
+                row[2].write(t.scheduled_time)
+                row[3].write(t.duration_minutes)
+                row[4].write(t.priority.upper())
+                row[5].write(t.category)
+                row[6].write(t.frequency)
+                if t.completion_status:
+                    if row[7].button("Uncomplete", type="primary", key=f"uncomplete_{id(t)}", use_container_width=True):
+                        t.completion_status = False
+                        st.rerun()
+                else:
+                    if row[7].button("Complete", type="secondary", key=f"complete_{id(t)}", use_container_width=True):
+                        t.mark_complete()
+                        st.rerun()
+        else:
+            st.info("No tasks match the selected filter.")
     else:
         st.info("No tasks yet. Add one above.")
 
@@ -149,7 +195,7 @@ with col2:
     selected_status_label = st.selectbox("Filter by status", list(status_filter_options.keys()))
     selected_status_filter = status_filter_options[selected_status_label]
 
-if st.button("Current Plan"):
+if st.button("Generate Today Plan"):
     if not owner.pets:
         st.warning("Add at least one pet first.")
     elif not any(p.tasks for p in owner.pets):
@@ -159,12 +205,14 @@ if st.button("Current Plan"):
     else:
         scheduler = Scheduler(owner=owner)
         pet_name_filter = None if selected_pet_filter == "All Pets" else selected_pet_filter
-        filtered = scheduler.filter_tasks(pet_name=pet_name_filter, status=selected_status_filter)
+        all_filtered = scheduler.filter_tasks(pet_name=pet_name_filter, status=None)
+        incomplete = [t for t in all_filtered if not t.completion_status]
+        completed = [t for t in all_filtered if t.completion_status]
 
-        if not filtered:
+        if not all_filtered:
             st.warning("No tasks match the selected filters.")
         else:
-            schedule = scheduler.generate_plan(tasks=filtered)
+            schedule = scheduler.generate_plan(tasks=incomplete)
 
             # Build a task-id -> pet name lookup for display
             task_pet = {id(t): pet.name for pet in owner.pets for t in pet.tasks}
@@ -175,16 +223,29 @@ if st.button("Current Plan"):
                     "Task Title": t.title,
                     "Time": t.scheduled_time,
                     "Duration (min)": t.duration_minutes,
-                    "Priority": t.priority,
+                    "Priority": t.priority.upper(),
                 }
 
-            st.success(f"Scheduled {len(schedule.tasks)} task(s), {schedule.total_duration} minutes total.")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Tasks Scheduled", len(schedule.tasks))
+            m2.metric("Minutes Used", schedule.total_duration)
+            m3.metric("Minutes Remaining", owner.available_minutes - schedule.total_duration)
+
+            if schedule.unscheduled:
+                st.warning(f"{len(schedule.unscheduled)} task(s) could not fit in your time budget.")
+            else:
+                st.success(f"All {len(schedule.tasks)} task(s) fit within your {owner.available_minutes}-minute budget.")
 
             if schedule.tasks:
-                st.markdown("**Scheduled tasks:**")
-                st.table([task_row(t) for t in schedule.tasks])
+                st.markdown("**Scheduled:**")
+                sorted_scheduled = sorted(schedule.tasks, key=lambda t: t.scheduled_time)
+                st.table([task_row(t) for t in sorted_scheduled])
 
             if schedule.unscheduled:
                 st.markdown("**Could not fit:**")
                 st.table([task_row(t) for t in schedule.unscheduled])
+
+            if completed:
+                st.markdown("**Complete:**")
+                st.table([task_row(t) for t in completed])
 
