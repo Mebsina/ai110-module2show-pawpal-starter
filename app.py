@@ -240,7 +240,7 @@ if st.button("Generate Today Plan"):
 
             if schedule.tasks:
                 st.markdown("**Scheduled:**")
-                sorted_scheduled = sorted(schedule.tasks, key=lambda t: t.scheduled_time)
+                sorted_scheduled = scheduler.sort_by_time(schedule.tasks)
                 st.table([task_row(t) for t in sorted_scheduled])
 
             if schedule.unscheduled:
