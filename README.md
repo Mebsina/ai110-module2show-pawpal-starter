@@ -162,6 +162,38 @@ Tasks are sorted by priority first, then by time or duration depending on the se
 - The priority column displays only the emoji (🔴 / 🟡 / 🟢)
 - `filter_tasks()` in `Scheduler` supports filtering by `status` so Generate Plan can separate incomplete vs. complete tasks before scheduling
 
+### Challenge 4: Professional UI and Output Formatting
+
+Visual improvements are applied consistently across the Task Manager and Generate Plan sections.
+
+**Species emoji in pet selector:**
+
+| Emoji | Species |
+|-------|---------|
+| 🐶 | Dog |
+| 🐱 | Cat |
+| 🐾 | Other |
+
+**Category emoji in task table** — common categories are automatically decorated:
+
+| Emoji | Category |
+|-------|----------|
+| 🦮 | walk |
+| 🍽️ | feeding / feed |
+| 💊 | meds / medication |
+| ✂️ | grooming / groom |
+| 🎾 | enrichment |
+| 🎮 | play |
+| 🎓 | training |
+| 🏥 | vet |
+| 🛁 | bath |
+
+Categories not in the list display without an emoji. All lookups are case-insensitive.
+
+**Priority emoji** is applied in both the Task Manager table and the Generate Plan output tables, replacing the plain text label everywhere.
+
+All emoji mappings are defined once at the top of `app.py` (`PRIORITY_EMOJI`, `CATEGORY_EMOJI`, `SPECIES_EMOJI`) and reused across the UI.
+
 ---
 
 ### Suggested workflow

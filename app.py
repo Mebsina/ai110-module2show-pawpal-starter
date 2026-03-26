@@ -2,6 +2,23 @@ import streamlit as st
 from datetime import time as dtime
 from pawpal_system import Pet, Task, Scheduler, save_data, load_data
 
+PRIORITY_EMOJI = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+CATEGORY_EMOJI = {
+    "walk": "🦮",
+    "feeding": "🍽️",
+    "feed": "🍽️",
+    "meds": "💊",
+    "medication": "💊",
+    "grooming": "✂️",
+    "groom": "✂️",
+    "enrichment": "🎾",
+    "play": "🎮",
+    "training": "🎓",
+    "vet": "🏥",
+    "bath": "🛁",
+}
+SPECIES_EMOJI = {"dog": "🐶", "cat": "🐱", "other": "🐾"}
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
@@ -82,8 +99,8 @@ else:
     pet_names = [p.name for p in owner.pets]
     st.session_state.active_pet_index = st.selectbox(
         "Select pet",
-        range(len(pet_names)),
-        format_func=lambda i: pet_names[i],
+        range(len(owner.pets)),
+        format_func=lambda i: f"{SPECIES_EMOJI.get(owner.pets[i].species, '🐾')} {owner.pets[i].name}",
         index=st.session_state.active_pet_index,
     )
     active_pet = owner.pets[st.session_state.active_pet_index]
@@ -175,9 +192,9 @@ else:
                 row[2].write(t.scheduled_time)
                 row[3].write(t.due_date)
                 row[4].write(t.duration_minutes)
-                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}
-                row[5].write(priority_emoji.get(t.priority, t.priority))
-                row[6].write(t.category)
+                row[5].write(PRIORITY_EMOJI.get(t.priority, t.priority))
+                category_label = f"{CATEGORY_EMOJI.get(t.category.lower(), '')} {t.category}".strip()
+                row[6].write(category_label)
                 row[7].write(t.frequency)
                 if t.completion_status:
                     if row[8].button("No", type="primary", key=f"uncomplete_{id(t)}", use_container_width=True):
@@ -247,7 +264,7 @@ if st.button("Generate Today Plan"):
                     "Time": t.scheduled_time,
                     "Due Date": t.due_date,
                     "Duration (min)": t.duration_minutes,
-                    "Priority": t.priority.upper(),
+                    "Priority": PRIORITY_EMOJI.get(t.priority, t.priority),
                 }
 
             m1, m2, m3 = st.columns(3)
